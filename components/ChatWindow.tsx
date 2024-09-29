@@ -14,9 +14,9 @@ import { MobileWarningOverlay } from './MobileWarningOverlay';
 type ModelProvider = "ollama" | "webllm" | "chrome_ai";
 
 const titleTexts: Record<ModelProvider, string> = {
-  ollama: "Fully Local Chat Over Documents",
-  webllm: "Fully In-Browser Chat Over Documents",
-  chrome_ai: "Chrome-Native Chat Over Documents",
+  ollama: "Fully Local Chat Over ",
+  webllm: "Fully In-Browser Chat Over ",
+  chrome_ai: "Chrome-Native Chat Over ",
 };
 
 const modelListItems: Record<ModelProvider, React.JSX.Element> = {
@@ -40,7 +40,7 @@ const modelListItems: Record<ModelProvider, React.JSX.Element> = {
       <li>
         ⚙️
         <span className="ml-2">
-          The default LLM is <code>Phi-3</code> run using <a href="https://webllm.mlc.ai/">WebLLM</a>.
+          The default LLM is <code>llama 3.2 1B</code> run using <a href="https://webllm.mlc.ai/">WebLLM</a>.
           The first time you start a chat, the app will automatically download the weights and cache them in your browser.
         </span>
       </li>
@@ -117,7 +117,7 @@ export function ChatWindow(props: {
           },
           webllm: {
             // See https://github.com/mlc-ai/web-llm/blob/main/src/config.ts for a list of available models
-            model: "Phi-3.5-mini-instruct-q4f16_1-MLC",
+            model:  "Llama-3.2-1B-Instruct-q4f32_1-MLC",
             chatOptions: {
               temperature: 0.1,
             },
@@ -282,14 +282,31 @@ export function ChatWindow(props: {
 
   const choosePDFComponent = (
     <>
-      <MobileWarningOverlay></MobileWarningOverlay>
-      <div className="p-4 md:p-8 rounded bg-[#25252d] w-full max-h-[85%] overflow-hidden flex flex-col">
-        <h1 className="text-3xl md:text-4xl mb-2 ml-auto mr-auto flex justify-center max-h-[36px]">
-          {emoji}<span className="mx-2">{titleTexts[modelProvider]}</span>{emoji}
+      
+      <div className="p-0 md:p-8 rounded  w-[44vh] h-full overflow-hidden flex flex-col">
+        <h1 className="text-3xl md:text-4xl mb-2  mr-auto flex justify-center max-h-full">
+          <span className="mx-2 font-semibold mt-2 text-sm">{titleTexts[modelProvider]}</span>
         </h1>
-        <div className="p-2 my-4 flex items-center justify-center">
-          <div className="inline-flex overflow-hidden border border-gray-200 rounded-lg">
-            <label htmlFor="ollama" className="cursor-pointer">
+        <div className="p-2 my-2 flex  items-center justify-center">
+          <div className="inline-flex overflow-hidden  border border-gray-200 rounded-lg">
+            <label htmlFor="webllm" className="cursor-pointer">
+              <input type="radio"
+                name="model_provider"
+                id="webllm"
+                className="sr-only peer "
+                checked={modelProvider === "webllm"}
+                onChange={() => {
+                  const params = new URLSearchParams(window.location.search);
+                  params.set("provider", "webllm");
+                  window.location.search = params.toString();
+                  setModelProvider("webllm");
+                }} />
+              <span className="relative inline-flex items-center h-full py-2 pr-2 space-x-2  text-sm pl-2 peer-checked:text-black peer-checked:bg-green-200">
+                <span>{emojis["webllm"]} WebLLM (llama)</span>
+              </span>
+            </label>
+            
+            <label htmlFor="ollama" className="cursor-pointer hidden">
               <input type="radio"
                 name="model_provider"
                 id="ollama"
@@ -305,22 +322,6 @@ export function ChatWindow(props: {
                 <span>{emojis["ollama"]} Ollama (Mistral)</span>
               </span>
             </label>
-            <label htmlFor="webllm" className="cursor-pointer">
-              <input type="radio"
-                name="model_provider"
-                id="webllm"
-                className="sr-only peer"
-                checked={modelProvider === "webllm"}
-                onChange={() => {
-                  const params = new URLSearchParams(window.location.search);
-                  params.set("provider", "webllm");
-                  window.location.search = params.toString();
-                  setModelProvider("webllm");
-                }} />
-              <span className="relative inline-flex items-center h-full py-2 pr-2 space-x-2 text-sm pl-2 peer-checked:text-black peer-checked:bg-green-200">
-                <span>{emojis["webllm"]} WebLLM (Phi-3)</span>
-              </span>
-            </label>
             <label htmlFor="chrome_ai" className="cursor-pointer">
               <input type="radio"
                 name="model_provider"
@@ -334,12 +335,12 @@ export function ChatWindow(props: {
                   setModelProvider("chrome_ai");
                 }} />
               <span className="relative inline-flex items-center h-full py-2 pr-2 space-x-2 text-sm pl-2 peer-checked:text-black peer-checked:bg-indigo-200">
-                <span>{emojis["chrome_ai"]} Chrome AI (Gemini Nano)</span>
+                <span>{emojis["chrome_ai"]} Chrome AI (Nano)</span>
               </span>
             </label>
           </div>
         </div>
-        <ul>
+        <ul className='w-auto'>
           <li className="text-l">
             🏡
             <span className="ml-2">
@@ -356,29 +357,11 @@ export function ChatWindow(props: {
           <li>
             🗺️
             <span className="ml-2">
-              The default embeddings are <pre className="inline-flex px-2 py-1 my-2 rounded">&quot;Xenova/all-MiniLM-L6-v2&quot;</pre>. For higher-quality, slower embeddings, switch to <pre className="inline-flex px-2 py-1 my-2 rounded">nomic-ai/nomic-embed-text-v1</pre> in <pre className="inline-flex px-2 py-1 my-2 rounded">app/worker.ts</pre>.
+              The default embeddings are <pre className="inline-flex px-2 py-1 my-2 rounded">&quot;Xenova/all-MiniLM-L6-v2&quot;</pre>
             </span>
           </li>
-          <li className="hidden text-l md:block">
-            🦜
-            <span className="ml-2">
-              <a target="_blank" href="https://js.langchain.com">LangChain.js</a> handles orchestration and ties everything together!
-            </span>
-          </li>
-          <li className="text-l">
-            🐙
-            <span className="ml-2">
-              This template is open source - you can see the source code and
-              deploy your own version{" "}
-              <a
-                href="https://github.com/jacoblee93/fully-local-pdf-chatbot"
-                target="_blank"
-              >
-                from the GitHub repo
-              </a>
-              !
-            </span>
-          </li>
+          
+          
           <li className="text-l">
             👇
             <span className="ml-2">
@@ -386,10 +369,9 @@ export function ChatWindow(props: {
             </span>
           </li>
         </ul>
-      </div>
-      <form onSubmit={embedPDF} className="mt-4 flex justify-between items-center w-full">
-        <input id="file_input" type="file" accept="pdf" className="text-white" onChange={(e) => e.target.files ? setSelectedPDF(e.target.files[0]) : null}></input>
-        <button type="submit" className="shrink-0 px-8 py-4 bg-sky-600 rounded w-28">
+        <form onSubmit={embedPDF} className="pt-6  items-center w-screen">
+        <input id="file_input" type="file" accept="pdf" className="text-white pl-4 font-semibold text-xs" onChange={(e) => e.target.files ? setSelectedPDF(e.target.files[0]) : null}></input>
+        <button type="submit" className="shrink-0 px-2 font-semibold text-sm py-1 bg-sky-600 rounded w-auto">
           <div role="status" className={`${isLoading ? "" : "hidden"} flex justify-center`}>
             <svg aria-hidden="true" className="w-6 h-6 text-white animate-spin dark:text-white fill-sky-800" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
@@ -400,6 +382,8 @@ export function ChatWindow(props: {
           <span className={isLoading ? "hidden" : ""}>Embed</span>
         </button>
       </form>
+      </div>
+      
     </>
   );
 
@@ -437,7 +421,7 @@ export function ChatWindow(props: {
             placeholder={placeholder ?? "What's it like to be a pirate?"}
             onChange={(e) => setInput(e.target.value)}
           />
-          <button type="submit" className="shrink-0 px-8 py-4 bg-sky-600 rounded w-28">
+          <button type="submit" className="shrink-0 px-6  py-4 bg-sky-600 rounded w-28">
             <div role="status" className={`${isLoading ? "" : "hidden"} flex justify-center`}>
               <svg aria-hidden="true" className="w-6 h-6 text-white animate-spin dark:text-white fill-sky-800" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
