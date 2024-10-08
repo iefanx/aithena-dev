@@ -15,8 +15,8 @@ type ModelProvider = "ollama" | "webllm" | "chrome_ai";
 
 const titleTexts: Record<ModelProvider, string> = {
   ollama: "Fully Local Chat Over ",
-  webllm: "Fully In-Browser Chat Over ",
-  chrome_ai: "Chrome-Native Chat Over ",
+  webllm: "",
+  chrome_ai: " ",
 };
 
 const modelListItems: Record<ModelProvider, React.JSX.Element> = {
