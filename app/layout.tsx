@@ -13,7 +13,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>Fully In-Browser Chat Over Documents</title>
+        <title>Aithena</title>
         <link rel="shortcut icon" href="/images/favicon.ico" />
         <meta
           name="description"
