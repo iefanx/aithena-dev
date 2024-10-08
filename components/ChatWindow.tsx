@@ -283,7 +283,7 @@ export function ChatWindow(props: {
   const choosePDFComponent = (
     <>
       
-      <div className="p-0 md:p-8 rounded  w-[44vh] h-full overflow-hidden flex flex-col">
+      <div className="p-0 md:p-8 rounded  w-full lg:w-[80vh] h-full overflow-hidden flex flex-col">
         <h1 className="text-3xl md:text-4xl mb-2  mr-auto flex justify-center max-h-full">
           <span className="mx-2 font-semibold mt-2 text-sm">{titleTexts[modelProvider]}</span>
         </h1>
