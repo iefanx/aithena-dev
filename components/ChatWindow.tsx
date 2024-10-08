@@ -344,7 +344,7 @@ export function ChatWindow(props: {
           <li className="text-l">
             🏡
             <span className="ml-2">
-              Yes, it&apos;s another LLM-powered chat over documents implementation... but this one is entirely {modelProvider === "ollama" ? "local" : "local in your browser"}!
+              Experience private, LLM-powered chat over your documents, entirely within your browser. Leveraging WebGPU for maximum performance, this application keeps no logs and is designed for secure, local conversations and tasks.!
             </span>
           </li>
           {modelListItems[modelProvider]}
