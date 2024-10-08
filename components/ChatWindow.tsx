@@ -349,6 +349,10 @@ export function ChatWindow(props: {
           </li>
           <li className="hidden text-l md:block">
             🌐
+            <span className="ml-2">
+              The vector store (<a target="_blank" href="https://github.com/tantaraio/voy">Voy</a>) and embeddings (<a target="_blank" href="https://huggingface.co/docs/transformers.js/index">Transformers.js</a>) are served via Vercel Edge function and run fully in the browser with no setup required.
+            </span>
+          </li>
           {modelListItems[modelProvider]}
           <li>
             🗺️
