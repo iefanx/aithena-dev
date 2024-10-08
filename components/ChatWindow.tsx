@@ -347,19 +347,8 @@ export function ChatWindow(props: {
               Yes, it&apos;s another LLM-powered chat over documents implementation... but this one is entirely {modelProvider === "ollama" ? "local" : "local in your browser"}!
             </span>
           </li>
-          <li className="hidden text-l md:block">
-            🌐
-            <span className="ml-2">
-              The vector store (<a target="_blank" href="https://github.com/tantaraio/voy">Voy</a>) and embeddings (<a target="_blank" href="https://huggingface.co/docs/transformers.js/index">Transformers.js</a>) are served via Vercel Edge function and run fully in the browser with no setup required.
-            </span>
-          </li>
           {modelListItems[modelProvider]}
-          <li>
-            🗺️
-            <span className="ml-2">
-              The default embeddings are <pre className="inline-flex px-2 py-1 my-2 rounded">&quot;Xenova/all-MiniLM-L6-v2&quot;</pre>
-            </span>
-          </li>
+          
           
           
           <li className="text-l">
