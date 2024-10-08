@@ -11,11 +11,12 @@ import { ChatMessageBubble } from '@/components/ChatMessageBubble';
 import { ChatWindowMessage } from '@/schema/ChatWindowMessage';
 import { MobileWarningOverlay } from './MobileWarningOverlay';
 
-type ModelProvider = "ollama" | "webllm" | "chrome_ai";
+type ModelProvider = "webllm" | "ollama" | "chrome_ai ";
 
 const titleTexts: Record<ModelProvider, string> = {
-  ollama: "Fully Local Chat Over ",
   webllm: "",
+  ollama: "Fully Local Chat Over ",
+  
   chrome_ai: " ",
 };
 
