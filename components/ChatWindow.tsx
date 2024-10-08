@@ -1,6 +1,6 @@
 "use client";
 
-import { Id, ToastContainer, toast } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useRef, useState, useEffect } from "react";
 import type { FormEvent } from "react";
@@ -8,142 +8,136 @@ import type { FormEvent } from "react";
 import { ChatMessageBubble } from '@/components/ChatMessageBubble';
 import { ChatWindowMessage } from '@/schema/ChatWindowMessage';
 
+const titleText = "Privacy-Oriented, Locally Offline Llama 3.2 Model";
 
-export function ChatWindow(props: { placeholder?: string; }) {
+export function ChatWindow(props: { placeholder?: string }) {
   const { placeholder } = props;
   const [messages, setMessages] = useState<ChatWindowMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPDF, setSelectedPDF] = useState<File | null>(null);
   const [readyToChat, setReadyToChat] = useState(false);
+  const initProgressToastId = useRef(null);
+  
   const worker = useRef<Worker | null>(null);
-  const toastId = useRef<Id | null>(null);
 
-
-  useEffect(() => {
-    worker.current = new Worker(new URL('../app/worker.ts', import.meta.url), { type: 'module' });
-    setIsLoading(false);
-  }, []);
-
-  const handlePDFUpload = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!selectedPDF) {
-      toast("Please select a PDF file.", { theme: "dark" });
-      return;
+  async function queryModel(messages: ChatWindowMessage[]) {
+    if (!worker.current) {
+      throw new Error("Worker is not ready.");
     }
-
-    setIsLoading(true);
-
-    worker.current?.postMessage({ pdf: selectedPDF });
-    worker.current?.addEventListener("message", (e: any) => {
-      switch (e.data.type) {
-        case "init_progress":
-          if (!toastId.current) {
-            toastId.current = toast("Processing PDF...", { progress: e.data.data.progress, theme: "dark" });
-          } else {
-            toast.update(toastId.current, { progress: e.data.data.progress });
-          }
-          break;
-
-        case "error":
-          setIsLoading(false);
-          toast(`Error: ${e.data.error}`, { theme: "dark" });
-          break;
-
-        case "complete":
-          setIsLoading(false);
-          setReadyToChat(true);
-          toast("PDF processed. You can now ask questions.", { theme: "dark" });
-          if (toastId.current) toast.dismiss(toastId.current);
-          break;
-      }
-    });
-
-  };
-
-  const handleSendMessage = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isLoading || !input) return;
-
-    const newMessage: ChatWindowMessage = { role: "human", content: input };
-    setMessages([...messages, newMessage]);
-    setInput("");
-    setIsLoading(true);
-
-    try {
-      const stream = await queryLLM([...messages, newMessage]);
-      const reader = stream.getReader();
-      const aiMessage: ChatWindowMessage = { role: "ai", content: "" };
-      setMessages([...messages, newMessage, aiMessage]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        aiMessage.content += value;
-        setMessages([...messages, newMessage, aiMessage]);
-      }
-
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const queryLLM = async (messages: ChatWindowMessage[]) => {
-    if (!worker.current) throw new Error("Worker not initialized");
     return new ReadableStream({
       start(controller) {
-        worker.current?.postMessage({ messages });
-        worker.current?.addEventListener("message", (e: any) => {
-          if (e.data.type === "chunk") controller.enqueue(e.data.data);
-          if (e.data.type === "complete") controller.close();
-          if (e.data.type === "error") controller.error(new Error(e.data.error));
-        });
-      }
-    });
-  };
+        const payload = {
+          messages,
+          modelConfig: {
+            model: "Llama-3.2-1B-Instruct-q4f32_1-MLC",
+            chatOptions: { temperature: 0.1 },
+          }
+        };
+        worker.current?.postMessage(payload);
 
-  const clearMessages = () => setMessages([]);
+        const onMessageReceived = async (e: any) => {
+          switch (e.data.type) {
+            case "init_progress":
+              if (initProgressToastId.current === null) {
+                initProgressToastId.current = toast("Loading model weights... This may take a while", { progress: e.data.data.progress || 0.01, theme: "dark" });
+              } else {
+                toast.update(initProgressToastId.current, { progress: e.data.data.progress || 0.01 });
+              }
+              break;
+            case "chunk":
+              controller.enqueue(e.data.data);
+              break;
+            case "error":
+              worker.current?.removeEventListener("message", onMessageReceived);
+              controller.error(new Error(e.data.error));
+              break;
+            case "complete":
+              worker.current?.removeEventListener("message", onMessageReceived);
+              controller.close();
+              break;
+          }
+        };
+        worker.current?.addEventListener("message", onMessageReceived);
+      },
+    });
+  }
+
+  async function sendMessage(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (isLoading || !input) return;
+    
+    const newMessages = [...messages, { role: "human", content: input }];
+    setMessages(newMessages);
+    setIsLoading(true);
+    setInput("");
+
+    try {
+      const stream = await queryModel(newMessages);
+      const reader = stream.getReader();
+      let chunk = await reader.read();
+      const aiResponseMessage = { content: "", role: "ai" };
+      setMessages([...newMessages, aiResponseMessage]);
+
+      while (!chunk.done) {
+        aiResponseMessage.content += chunk.value;
+        setMessages([...newMessages, aiResponseMessage]);
+        chunk = await reader.read();
+      }
+      setIsLoading(false);
+    } catch (e: any) {
+      toast(`Error querying your PDF: ${e.message}`, { theme: "dark" });
+      setIsLoading(false);
+      setInput(input);
+    }
+  }
+
+  async function embedPDF(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selectedPDF) {
+      toast("Select a file to embed.", { theme: "dark" });
+      return;
+    }
+    setIsLoading(true);
+    worker.current?.postMessage({ pdf: selectedPDF });
+
+    const onMessageReceived = (e: any) => {
+      switch (e.data.type) {
+        case "error":
+          worker.current?.removeEventListener("message", onMessageReceived);
+          toast(`Error embedding PDF: ${e.data.error}`, { theme: "dark" });
+          setIsLoading(false);
+          break;
+        case "complete":
+          worker.current?.removeEventListener("message", onMessageReceived);
+          setReadyToChat(true);
+          toast("Embedding successful! Ask questions about your PDF now.", { theme: "dark" });
+          setIsLoading(false);
+          break;
+      }
+    };
+    worker.current?.addEventListener("message", onMessageReceived);
+  }
+
+  useEffect(() => {
+    if (!worker.current) {
+      worker.current = new Worker(new URL('../app/worker.ts', import.meta.url), { type: 'module' });
+      setIsLoading(false);
+    }
+  }, []);
 
   return (
-    <div className={`flex flex-col items-center p-4 md:p-8 rounded grow overflow-hidden ${readyToChat ? "border" : ""}`}>
-
-      {!readyToChat && (
-        <div className="p-0 md:p-8 rounded w-[44vh] h-full overflow-hidden flex flex-col">
-          <h1 className="text-3xl md:text-4xl mb-2 mr-auto flex justify-center max-h-full">
-            <span className="mx-2 font-semibold mt-2 text-sm">Privacy-focused Local LLM Chat</span>
-          </h1>
-          <p className="text-center text-gray-500">Upload a PDF and ask questions. All processing happens locally. No logs are kept.</p>
-
-          <form onSubmit={handlePDFUpload} className="pt-6 items-center w-screen">
-            <input id="file_input" type="file" accept="pdf" onChange={(e) => e.target.files && setSelectedPDF(e.target.files[0])} />
-            <button type="submit" className="px-2 font-semibold text-sm py-1 bg-sky-600 rounded w-auto">
-              {isLoading ? <span className="animate-spin">Loading...</span> : <span>Upload</span>}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {readyToChat && (
-        <>
-          <div className="flex flex-col-reverse w-full mb-4 overflow-auto grow">
-            {messages.map((m, i) => (
-              <ChatMessageBubble key={i} message={m} aiEmoji={"🌐"} onRemovePressed={() => setMessages(prev => prev.filter((_, j) => j !== i))} />
-            ))}
-          </div>
-          <button onClick={clearMessages} className={(messages.length === 0 ? "hidden " : "") + "shrink-0 rounded mr-auto text-gray-400 border py-1 px-2"}>Clear all messages</button>
-          <form onSubmit={handleSendMessage} className="flex w-full flex-col">
-            <div className="flex w-full mt-4">
-              <input className="grow mr-8 p-4 rounded" value={input} placeholder={placeholder} onChange={(e) => setInput(e.target.value)} />
-              <button type="submit" className="shrink-0 px-6 py-4 bg-sky-600 rounded w-28">
-                {isLoading ? <span className="animate-spin">Loading...</span> : <span>Send</span>}
-              </button>
-            </div>
-          </form>
-        </>
-      )}
-
-      <ToastContainer />
+    <div className="p-6 md:p-12 bg-black text-gray-300 rounded-md max-w-3xl mx-auto shadow-lg flex flex-col space-y-4">
+      <h1 className="text-center text-4xl font-semibold text-white mb-6">{titleText}</h1>
+      <form onSubmit={embedPDF} className="flex flex-col items-center space-y-3">
+        <input type="file" accept="application/pdf" onChange={(e) => setSelectedPDF(e.target.files ? e.target.files[0] : null)} className="text-white" />
+        <button type="submit" className="py-2 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500">Upload PDF</button>
+      </form>
+      <form onSubmit={sendMessage} className="flex flex-col items-center space-y-3 mt-4">
+        <textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} className="w-full p-4 bg-gray-800 text-white rounded-lg" rows={5}></textarea>
+        <button type="submit" disabled={isLoading} className={`py-2 px-4 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>Send</button>
+      </form>
+      <ToastContainer position="bottom-right" theme="dark" />
     </div>
   );
 }
